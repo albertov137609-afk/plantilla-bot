@@ -127,11 +127,15 @@ client.kazagumo
   .on('playerException', (player, track, error) => {
     const errorMsg = error?.message || error?.toString?.() || 'Error desconocido';
     const errorType = error?.exception?.type || error?.type || 'Unknown';
+    const errorSeverity = error?.severity || 'unknown';
     
     console.error(`[KAZAGUMO] Error en player guild ${player.guildId}:`, {
       message: errorMsg,
       type: errorType,
+      severity: errorSeverity,
       track: track?.title || 'Unknown',
+      uri: track?.uri || 'Unknown',
+      isStream: track?.isStream,
       fullError: error
     });
     
@@ -140,9 +144,12 @@ client.kazagumo
 
     const embed = new EmbedBuilder()
       .setColor(COLOR.RED)
-      .setDescription(`❌ Error al reproducir **${track?.title || 'canción'}**: ${errorMsg}`);
+      .setDescription(`❌ Error al reproducir **${track?.title || 'canción'}**: ${errorMsg}\n⏭ Saltando a la siguiente...`);
 
-    channel.send({ embeds: [embed] });
+    channel.send({ embeds: [embed] }).catch(() => {});
+    
+    // Saltar automáticamente a la siguiente canción
+    setTimeout(() => player.skip(), 500);
   })
   .on('playerStuck', (player, track) => {
     console.warn(`[KAZAGUMO] Player atascado en guild ${player.guildId}, saltando...`);
@@ -161,10 +168,17 @@ client.kazagumo
 // ─── Eventos de Shoukaku (nodos de Lavalink) ─────────────────────────────────
 client.kazagumo.shoukaku
   .on('ready', (name) => console.log(`[LAVALINK] Nodo "${name}" conectado.`))
-  .on('error', (name, error) => console.error(`[LAVALINK] Error en nodo "${name}":`, error))
+  .on('error', (name, error) => {
+    console.error(`[LAVALINK] Error en nodo "${name}":`, error?.message || error);
+  })
   .on('close', (name, code, reason) => console.warn(`[LAVALINK] Nodo "${name}" cerrado: ${code} ${reason}`))
   .on('disconnect', (name, players, moved) => {
     console.warn(`[LAVALINK] Nodo "${name}" desconectado. Players afectados: ${players.size}`);
+  })
+  .on('debug', (name, msg) => {
+    if (msg?.includes('error') || msg?.includes('Error')) {
+      console.warn(`[LAVALINK DEBUG] ${name}: ${msg}`);
+    }
   });
 
 // ─── Comandos ─────────────────────────────────────────────────────────────────
