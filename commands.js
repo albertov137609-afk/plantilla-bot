@@ -93,18 +93,18 @@ const play = {
   async autocomplete(interaction, client) {
     const focusedValue = interaction.options.getFocused().trim();
     if (!focusedValue) {
-      return interaction.respond([]);
+      return interaction.respond([]).catch(() => {});
     }
 
     try {
-      // Si es URL de Spotify, no buscar
+      // Si es URL de Spotify, responder inmediatamente sin buscar
       if (focusedValue.includes('spotify.com')) {
         return interaction.respond([
           {
             name: 'URL de Spotify (enlace directo)',
             value: focusedValue.slice(0, 100),
           }
-        ]);
+        ]).catch(() => {});
       }
 
       let searchEngine = 'soundcloud';
@@ -116,10 +116,22 @@ const play = {
         searchEngine = client.defaultSearchEngine || 'soundcloud';
       }
 
-      const result = await client.kazagumo.search(focusedValue, {
+      // Agregar timeout para evitar que la búsqueda tarde más de 2.5 segundos
+      const searchPromise = client.kazagumo.search(focusedValue, {
         requester: interaction.user,
         engine: searchEngine,
       });
+
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(null), 2500);
+      });
+
+      const result = await Promise.race([searchPromise, timeoutPromise]);
+
+      if (!result) {
+        // Timeout - responder con resultados vacíos
+        return interaction.respond([]).catch(() => {});
+      }
 
       const suggestions = (result?.tracks || [])
         .slice(0, 8)
@@ -128,10 +140,10 @@ const play = {
           value: (track.uri || track.title || '').slice(0, 100),
         }));
 
-      return interaction.respond(suggestions);
+      return interaction.respond(suggestions).catch(() => {});
     } catch (error) {
       console.error('Autocomplete error:', error);
-      return interaction.respond([]);
+      return interaction.respond([]).catch(() => {});
     }
   },
 

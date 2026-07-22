@@ -18,7 +18,7 @@ if (!process.env.LAVALINK_HOST || !process.env.LAVALINK_PASSWORD) {
 }
 
 const configuredDefaultSearchEngine = (process.env.DEFAULT_SEARCH_ENGINE || 'soundcloud').toLowerCase();
-const defaultSearchEngine = ['soundcloud', 'youtube'].includes(configuredDefaultSearchEngine)
+const defaultSearchEngine = ['soundcloud', 'youtube', 'spotify'].includes(configuredDefaultSearchEngine)
   ? configuredDefaultSearchEngine
   : 'soundcloud';
 
