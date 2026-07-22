@@ -2,14 +2,34 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { formatDuration, COLOR } = require('./utils');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+function buildMinimalEmbed({ color = COLOR.BLUE, title, description, fields = [], footer, thumbnail, url }) {
+  const embed = new EmbedBuilder().setColor(color);
+  if (title) embed.setTitle(title);
+  if (description) embed.setDescription(description);
+  if (url) embed.setURL(url);
+  if (thumbnail) embed.setThumbnail(thumbnail);
+  if (fields.length) embed.addFields(fields);
+  if (footer) embed.setFooter(footer);
+  return embed;
+}
+
 function errorEmbed(desc) {
-  return new EmbedBuilder().setColor(COLOR.RED).setDescription(`❌ ${desc}`);
+  return buildMinimalEmbed({ color: COLOR.RED, description: `❌ ${desc}` });
 }
 function successEmbed(desc) {
-  return new EmbedBuilder().setColor(COLOR.GREEN).setDescription(desc);
+  return buildMinimalEmbed({ color: COLOR.GREEN, description: desc });
 }
 function infoEmbed(desc) {
-  return new EmbedBuilder().setColor(COLOR.BLUE).setDescription(desc);
+  return buildMinimalEmbed({ color: COLOR.BLUE, description: desc });
+}
+
+function buildLevelBar(value, maxValue = 10, minValue = -10) {
+  const clamped = Math.max(minValue, Math.min(maxValue, value));
+  const ratio = (clamped - minValue) / (maxValue - minValue);
+  const steps = 10;
+  const filled = Math.round(ratio * steps);
+  const empty = steps - filled;
+  return `${'▰'.repeat(filled)}${'▱'.repeat(empty)}`;
 }
 
 function getVoiceJoinError(interaction) {
@@ -122,13 +142,13 @@ const play = {
       if (result.type === 'PLAYLIST') {
         for (const track of result.tracks) player.queue.add(track);
 
-        const embed = new EmbedBuilder()
-          .setColor(COLOR.BLUE)
-          .setAuthor({ name: '📋 Playlist encolada' })
-          .setTitle(result.playlistName || 'Playlist')
-          .setThumbnail(result.tracks[0]?.thumbnail || null)
-          .addFields({ name: '🎵 Canciones', value: `${result.tracks.length}`, inline: true })
-          .setFooter({ text: `Pedido por ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
+        const embed = buildMinimalEmbed({
+          color: COLOR.BLUE,
+          title: result.playlistName || 'Playlist',
+          description: `📋 ${result.tracks.length} canciones listas para reproducirse.`,
+          thumbnail: result.tracks[0]?.thumbnail || null,
+          footer: { text: `Pedido por ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() },
+        });
 
         if (!player.playing && !player.paused) player.play();
         return interaction.editReply({ embeds: [embed] });
@@ -142,16 +162,17 @@ const play = {
 
       // Si ya está reproduciendo, mostrar "agregado a la cola"
       if (player.queue.size > 1 || player.playing) {
-        const embed = new EmbedBuilder()
-          .setColor(COLOR.BLUE)
-          .setAuthor({ name: '➕ Agregado a la cola' })
-          .setTitle(track.title)
-          .setURL(track.uri || null)
-          .setThumbnail(track.thumbnail || null)
-          .addFields(
-            { name: '⏱ Duración', value: track.isStream ? '🔴 En vivo' : formatDuration(track.length), inline: true },
+        const embed = buildMinimalEmbed({
+          color: COLOR.BLUE,
+          title: track.title,
+          description: `➕ Agregado a la cola · ${track.isStream ? '🔴 En vivo' : formatDuration(track.length)}`,
+          thumbnail: track.thumbnail || null,
+          url: track.uri || null,
+          fields: [
+            { name: '🎤 Artista', value: track.author || 'Desconocido', inline: true },
             { name: '📋 Posición', value: `#${player.queue.size}`, inline: true },
-          );
+          ],
+        });
         return interaction.editReply({ embeds: [embed] });
       }
 
@@ -240,14 +261,15 @@ const queueCmd = {
 
     const totalMs = [current, ...upcoming].reduce((acc, t) => acc + (t?.length || 0), 0);
 
-    const embed = new EmbedBuilder()
-      .setColor(COLOR.BLUE)
-      .setAuthor({ name: `Cola de ${interaction.guild.name}`, iconURL: interaction.guild.iconURL() })
-      .setThumbnail(current.thumbnail || null)
-      .addFields({
+    const embed = buildMinimalEmbed({
+      color: COLOR.BLUE,
+      title: `Cola · ${interaction.guild.name}`,
+      thumbnail: current.thumbnail || null,
+      fields: [{
         name: '▶ Reproduciendo ahora',
         value: `[${current.title}](${current.uri}) \`${formatDuration(current.length)}\``,
-      });
+      }],
+    });
 
     if (slice.length) {
       embed.addFields({
@@ -281,18 +303,18 @@ const nowplaying = {
     const bar = '▓'.repeat(filled) + '░'.repeat(BAR - filled);
     const loopLabels = { none: 'Off', track: 'Cancion', queue: 'Cola' };
 
-    const embed = new EmbedBuilder()
-      .setColor(COLOR.GREEN)
-      .setAuthor({ name: '▶  Reproduciendo ahora' })
-      .setTitle(track.title)
-      .setURL(track.uri || null)
-      .setThumbnail(track.thumbnail || null)
-      .setDescription(`\`${formatDuration(elapsed)}\` ${bar} \`${formatDuration(total)}\``)
-      .addFields(
+    const embed = buildMinimalEmbed({
+      color: COLOR.GREEN,
+      title: track.title,
+      description: `\`${formatDuration(elapsed)}\` ${bar} \`${formatDuration(total)}\``,
+      url: track.uri || null,
+      thumbnail: track.thumbnail || null,
+      fields: [
         { name: '⏱ Duracion', value: track.isStream ? '🔴 En vivo' : formatDuration(track.length), inline: true },
         { name: '🔁 Loop', value: loopLabels[player.loop] || 'Off', inline: true },
         { name: '🔊 Volumen', value: `${player.volume}%`, inline: true },
-      );
+      ],
+    });
 
     const next = player.queue[0];
     if (next) embed.addFields({ name: '⏭ Siguiente', value: next.title });
@@ -319,8 +341,8 @@ const volume = {
     const level = interaction.options.getInteger('nivel', true);
     player.setVolume(level);
     const bars = Math.round(level / 10);
-    const bar = '🟩'.repeat(bars) + '⬛'.repeat(10 - bars);
-    return interaction.reply({ embeds: [new EmbedBuilder().setColor(COLOR.BLUE).setDescription(`${bar}\n**Volumen:** ${level}%`)] });
+    const bar = '▰'.repeat(bars) + '▱'.repeat(10 - bars);
+    return interaction.reply({ embeds: [buildMinimalEmbed({ color: COLOR.BLUE, title: '🔊 Volumen', description: `${bar}\n**${level}%**` })] });
   },
 };
 
@@ -363,6 +385,67 @@ const shuffle = {
   },
 };
 
+// ─── /eq ─────────────────────────────────────────────────────────────────────
+const eq = {
+  data: new SlashCommandBuilder()
+    .setName('eq')
+    .setDescription('Ajusta graves, agudos y volumen del audio')
+    .addIntegerOption(o => o.setName('bajos').setDescription('Graves (-10 a 10)').setMinValue(-10).setMaxValue(10))
+    .addIntegerOption(o => o.setName('agudos').setDescription('Agudos (-10 a 10)').setMinValue(-10).setMaxValue(10))
+    .addIntegerOption(o => o.setName('volumen').setDescription('Volumen (0 a 100)').setMinValue(0).setMaxValue(100)),
+
+  async execute(interaction, client) {
+    const player = client.kazagumo.players.get(interaction.guildId) || await getOrCreatePlayer(interaction, client);
+
+    const bass = interaction.options.getInteger('bajos');
+    const treble = interaction.options.getInteger('agudos');
+    const volume = interaction.options.getInteger('volumen');
+
+    const currentSettings = player.eqSettings || { bass: 0, treble: 0, volume: player.volume || 80 };
+    const nextSettings = {
+      bass: typeof bass === 'number' ? bass : currentSettings.bass,
+      treble: typeof treble === 'number' ? treble : currentSettings.treble,
+      volume: typeof volume === 'number' ? volume : currentSettings.volume,
+    };
+
+    player.eqSettings = nextSettings;
+
+    if (typeof volume === 'number') {
+      player.setVolume(nextSettings.volume);
+    }
+
+    const eqBands = [
+      { band: 0, gain: Math.max(-0.5, Math.min(0.5, nextSettings.bass / 10)) },
+      { band: 1, gain: Math.max(-0.25, Math.min(0.25, nextSettings.bass / 20)) },
+      { band: 2, gain: Math.max(-0.25, Math.min(0.25, nextSettings.treble / 20)) },
+      { band: 3, gain: Math.max(-0.5, Math.min(0.5, nextSettings.treble / 10)) },
+    ];
+
+    if (typeof player.setEqualizer === 'function') {
+      await player.setEqualizer(eqBands);
+    } else if (typeof player.setFilters === 'function') {
+      await player.setFilters({ equalizer: eqBands });
+    }
+
+    const embed = buildMinimalEmbed({
+      color: COLOR.BLUE,
+      title: '🎚️ Ecualizador',
+      description: [
+        `**Bajos** \n${buildLevelBar(nextSettings.bass, 10, -10)}  ${nextSettings.bass > 0 ? '+' : ''}${nextSettings.bass}`,
+        `**Agudos** \n${buildLevelBar(nextSettings.treble, 10, -10)}  ${nextSettings.treble > 0 ? '+' : ''}${nextSettings.treble}`,
+        `**Volumen** \n${buildLevelBar(Math.round(nextSettings.volume / 10), 10, 0)}  ${nextSettings.volume}%`,
+      ].join('\n\n'),
+      fields: [
+        { name: 'Bajos', value: `${nextSettings.bass > 0 ? '+' : ''}${nextSettings.bass}`, inline: true },
+        { name: 'Agudos', value: `${nextSettings.treble > 0 ? '+' : ''}${nextSettings.treble}`, inline: true },
+        { name: 'Volumen', value: `${nextSettings.volume}%`, inline: true },
+      ],
+    });
+
+    return interaction.reply({ embeds: [embed] });
+  },
+};
+
 // ─── /join ───────────────────────────────────────────────────────────────────
 const join = {
   data: new SlashCommandBuilder().setName('join').setDescription('Conecta el bot a tu canal de voz'),
@@ -395,6 +478,6 @@ const leave = {
 
 module.exports = [
   play, skip, stop, pause, resume,
-  queueCmd, nowplaying, volume, loop, shuffle,
+  queueCmd, nowplaying, volume, loop, shuffle, eq,
   join, leave,
 ];
