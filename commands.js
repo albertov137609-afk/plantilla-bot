@@ -162,13 +162,9 @@ const play = {
       let searchEngine = null;
 
       if (query.includes('spotify.com')) {
-        // URL de Spotify - usar prefijo spsearch: para que el plugin de Spotify la procese
-        const spotifyId = query.match(/(?:album|playlist|track)\/([a-zA-Z0-9]+)/)?.[1];
-        if (spotifyId) {
-          searchQuery = `spsearch:${spotifyId}`;
-        } else {
-          searchQuery = query;
-        }
+        // URL de Spotify - pasar directamente, el plugin la procesará automáticamente
+        searchQuery = query;
+        searchEngine = 'spotify';
       } else if (query.includes('youtu')) {
         searchQuery = query;
         searchEngine = 'youtube';
