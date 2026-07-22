@@ -157,7 +157,7 @@ for (const command of commands) {
 }
 
 // ─── Ready ────────────────────────────────────────────────────────────────────
-client.once('ready', async () => {
+client.once('clientReady', async () => {
   console.log(`Bot listo como ${client.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

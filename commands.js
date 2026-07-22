@@ -146,20 +146,21 @@ const play = {
     try {
       const player = await getOrCreatePlayer(interaction, client);
 
-      // Procesar query: si es URL de Spotify, pasarla directamente; si es texto, buscar
       let searchQuery = query;
       let searchEngine = null;
 
       if (query.includes('spotify.com')) {
-        // URL directa de Spotify - pasarla como está
-        searchQuery = query;
-        searchEngine = undefined; // Kazagumo detectará automáticamente que es Spotify
+        // URL de Spotify - usar prefijo spsearch: para que el plugin de Spotify la procese
+        const spotifyId = query.match(/(?:album|playlist|track)\/([a-zA-Z0-9]+)/)?.[1];
+        if (spotifyId) {
+          searchQuery = `spsearch:${spotifyId}`;
+        } else {
+          searchQuery = query;
+        }
       } else if (query.includes('youtu')) {
-        // URL o búsqueda de YouTube
         searchQuery = query;
         searchEngine = 'youtube';
       } else if (query.includes('soundcloud.com')) {
-        // URL de SoundCloud
         searchQuery = query;
         searchEngine = 'soundcloud';
       } else {
@@ -174,7 +175,7 @@ const play = {
       });
 
       if (!result || !result.tracks.length) {
-        return interaction.editReply({ embeds: [errorEmbed(`Sin resultados para: **${query}**`)] });
+        return interaction.editReply({ embeds: [errorEmbed(`Sin resultados para: **${query}**\n\n📢 **Nota:** Asegúrate de que el álbum o playlist no es privado y que tienes credenciales de Spotify configuradas.`)] });
       }
 
       if (result.type === 'PLAYLIST') {
