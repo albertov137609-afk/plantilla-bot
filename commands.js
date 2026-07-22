@@ -447,6 +447,10 @@ const eq = {
   async execute(interaction, client) {
     const player = client.kazagumo.players.get(interaction.guildId) || await getOrCreatePlayer(interaction, client);
 
+    if (!player?.queue?.current) {
+      return interaction.reply({ embeds: [infoEmbed('No hay nada reproduciendose.')], ephemeral: true });
+    }
+
     const bass = interaction.options.getInteger('bajos');
     const treble = interaction.options.getInteger('agudos');
     const volume = interaction.options.getInteger('volumen');
@@ -460,23 +464,28 @@ const eq = {
 
     player.eqSettings = nextSettings;
 
-    if (typeof volume === 'number') {
-      player.setVolume(nextSettings.volume);
-    }
+    try {
+      if (typeof volume === 'number') {
+        player.setVolume(nextSettings.volume);
+      }
 
-    const eqBands = [
-      { band: 0, gain: Math.max(-10, Math.min(10, nextSettings.bass * 1.2)) },
-      { band: 1, gain: Math.max(-10, Math.min(10, nextSettings.bass * 0.8)) },
-      { band: 2, gain: Math.max(-10, Math.min(10, nextSettings.treble * 0.8)) },
-      { band: 3, gain: Math.max(-10, Math.min(10, nextSettings.treble * 1.2)) },
-    ];
+      const eqBands = [
+        { band: 0, gain: Math.max(-10, Math.min(10, nextSettings.bass * 1.2)) },
+        { band: 1, gain: Math.max(-10, Math.min(10, nextSettings.bass * 0.8)) },
+        { band: 2, gain: Math.max(-10, Math.min(10, nextSettings.treble * 0.8)) },
+        { band: 3, gain: Math.max(-10, Math.min(10, nextSettings.treble * 1.2)) },
+      ];
 
-    if (player?.shoukaku?.setFilters) {
-      await player.shoukaku.setFilters({ equalizer: eqBands });
-    } else if (typeof player?.setEqualizer === 'function') {
-      await player.setEqualizer(eqBands);
-    } else if (typeof player?.setFilters === 'function') {
-      await player.setFilters({ equalizer: eqBands });
+      if (player?.shoukaku?.setFilters) {
+        await player.shoukaku.setFilters({ equalizer: eqBands });
+      } else if (typeof player?.setEqualizer === 'function') {
+        await player.setEqualizer(eqBands);
+      } else if (typeof player?.setFilters === 'function') {
+        await player.setFilters({ equalizer: eqBands });
+      }
+    } catch (eqError) {
+      console.error('[EQ] Error aplicando filtros:', eqError);
+      // Continuar de todas formas, el EQ es secundario
     }
 
     const embed = buildMinimalEmbed({

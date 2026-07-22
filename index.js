@@ -125,18 +125,36 @@ client.kazagumo
     console.log(`[KAZAGUMO] Player cerrado para guild ${player.guildId}`);
   })
   .on('playerException', (player, track, error) => {
-    console.error(`[KAZAGUMO] Error en player guild ${player.guildId}:`, error);
+    const errorMsg = error?.message || error?.toString?.() || 'Error desconocido';
+    const errorType = error?.exception?.type || error?.type || 'Unknown';
+    
+    console.error(`[KAZAGUMO] Error en player guild ${player.guildId}:`, {
+      message: errorMsg,
+      type: errorType,
+      track: track?.title || 'Unknown',
+      fullError: error
+    });
+    
     const channel = client.channels.cache.get(player.textId);
     if (!channel) return;
 
     const embed = new EmbedBuilder()
       .setColor(COLOR.RED)
-      .setDescription(`❌ Error al reproducir **${track?.title || 'canción'}**: ${error?.message || 'Error desconocido'}`);
+      .setDescription(`❌ Error al reproducir **${track?.title || 'canción'}**: ${errorMsg}`);
 
     channel.send({ embeds: [embed] });
   })
   .on('playerStuck', (player, track) => {
     console.warn(`[KAZAGUMO] Player atascado en guild ${player.guildId}, saltando...`);
+    
+    const channel = client.channels.cache.get(player.textId);
+    if (channel) {
+      const embed = new EmbedBuilder()
+        .setColor(COLOR.YELLOW)
+        .setDescription(`⏭ **${track?.title || 'Canción'}** se atascó, saltando...`);
+      channel.send({ embeds: [embed] }).catch(() => {});
+    }
+    
     player.skip();
   });
 
