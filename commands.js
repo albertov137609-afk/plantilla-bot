@@ -193,6 +193,21 @@ const play = {
         return interaction.editReply({ embeds: [errorEmbed(`Sin resultados para: **${query}**\n\n📢 **Nota:** Asegúrate de que el álbum o playlist no es privado y que tienes credenciales de Spotify configuradas.`)] });
       }
 
+      console.log('[SEARCH RESULT]', {
+        query: searchQuery,
+        engine: searchEngine,
+        type: result.type,
+        tracksCount: result.tracks.length,
+        firstTrack: {
+          title: result.tracks[0]?.title,
+          uri: result.tracks[0]?.uri,
+          author: result.tracks[0]?.author,
+          isStream: result.tracks[0]?.isStream,
+          sourceName: result.tracks[0]?.sourceName,
+          raw: result.tracks[0],
+        }
+      });
+
       if (result.type === 'PLAYLIST') {
         for (const track of result.tracks) player.queue.add(track);
 
@@ -210,9 +225,21 @@ const play = {
 
       // Canción individual
       const track = result.tracks[0];
+      
+      console.log('[QUEUE ADD]', {
+        title: track.title,
+        uri: track.uri,
+        author: track.author,
+        length: track.length,
+        sourceName: track.sourceName,
+      });
+      
       player.queue.add(track);
 
-      if (!player.playing && !player.paused) player.play();
+      if (!player.playing && !player.paused) {
+        console.log('[PLAYER PLAY] Iniciando reproducción...');
+        player.play();
+      }
 
       if (player.queue.size > 1 || player.playing) {
         const embed = buildMinimalEmbed({

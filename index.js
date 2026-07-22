@@ -85,6 +85,16 @@ client.defaultSearchEngine = defaultSearchEngine;
 // ─── Eventos de Kazagumo ─────────────────────────────────────────────────────
 client.kazagumo
   .on('playerStart', (player, track) => {
+    console.log('[PLAYER START]', {
+      title: track?.title,
+      uri: track?.uri,
+      author: track?.author,
+      isStream: track?.isStream,
+      length: track?.length,
+      sourceName: track?.sourceName,
+      resolver: track?.resolver,
+    });
+
     const channel = client.channels.cache.get(player.textId);
     if (!channel) return;
 
