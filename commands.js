@@ -74,7 +74,8 @@ function formatAutocompleteLabel(track) {
   const title = track?.title?.replace(/\s+/g, ' ').trim() || 'Sin título';
   const artist = track?.author?.replace(/\s+/g, ' ').trim() || 'Artista desconocido';
   const duration = track?.isStream ? '🔴 En vivo' : formatDuration(track?.length);
-  return `${title} — ${artist} • ${duration}`;
+  const label = `${title} — ${artist} • ${duration}`;
+  return label.length > 100 ? `${label.slice(0, 97)}...` : label;
 }
 
 // ─── /play ───────────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ const play = {
         .slice(0, 8)
         .map(track => ({
           name: formatAutocompleteLabel(track),
-          value: track.uri || track.title,
+          value: (track.uri || track.title || '').slice(0, 100),
         }));
 
       return interaction.respond(suggestions);
