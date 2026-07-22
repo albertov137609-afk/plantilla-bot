@@ -162,19 +162,26 @@ const play = {
       let searchEngine = null;
 
       if (query.includes('spotify.com')) {
-        // URL de Spotify - pasar directamente, el plugin la procesará automáticamente
+        // URL de Spotify - pasar directamente
         searchQuery = query;
         searchEngine = 'spotify';
-      } else if (query.includes('youtu')) {
-        searchQuery = query;
-        searchEngine = 'youtube';
+      } else if (query.includes('youtu') || query.includes('youtube.com')) {
+        // URL de YouTube - extraer ID del video
+        const videoIdMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (videoIdMatch?.[1]) {
+          searchQuery = videoIdMatch[1]; // Solo pasar el ID
+          searchEngine = 'youtube';
+        } else {
+          searchQuery = query;
+          searchEngine = 'youtube';
+        }
       } else if (query.includes('soundcloud.com')) {
         searchQuery = query;
         searchEngine = 'soundcloud';
       } else {
         // Búsqueda por texto - usar el engine por defecto
         searchQuery = query;
-        searchEngine = client.defaultSearchEngine || 'soundcloud';
+        searchEngine = client.defaultSearchEngine || 'youtube';
       }
 
       const result = await client.kazagumo.search(searchQuery, {
