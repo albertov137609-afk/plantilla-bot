@@ -1,0 +1,29 @@
+{
+  "name": "discord-music-bot",
+  "version": "1.0.0",
+  "description": "Bot de Discord para reproducir musica con SoundCloud y soporte de metadata de Spotify",
+  "main": "index.js",
+  "scripts": {
+    "check": "node --check index.js && node --check commands.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.2.0",
+    "@discordjs/voice": "^0.19.2",
+    "@distube/ytdl-core": "^4.16.12",
+    "discord-api-types": "^0.37.83",
+    "discord.js": "^14.26.0",
+    "dotenv": "^16.4.7",
+    "kazagumo": "^3.4.3",
+    "kazagumo-spotify": "^2.1.1",
+    "opusscript": "^0.0.8",
+    "shoukaku": "^4.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
