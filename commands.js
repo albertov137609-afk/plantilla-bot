@@ -166,10 +166,11 @@ const play = {
         searchQuery = query;
         searchEngine = 'spotify';
       } else if (query.includes('youtu') || query.includes('youtube.com')) {
-        // URL de YouTube - extraer ID del video
+        // URL de YouTube - usar ytsearch: para forzar resolución correcta
         const videoIdMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
         if (videoIdMatch?.[1]) {
-          searchQuery = videoIdMatch[1]; // Solo pasar el ID
+          // Es una URL, usar ytsearch: para forzar que Lavalink la resuelva correctamente
+          searchQuery = `ytsearch:${videoIdMatch[1]}`;
           searchEngine = 'youtube';
         } else {
           searchQuery = query;
@@ -506,15 +507,21 @@ const eq = {
         { band: 3, gain: Math.max(-10, Math.min(10, nextSettings.treble * 1.2)) },
       ];
 
-      if (player?.shoukaku?.setFilters) {
-        await player.shoukaku.setFilters({ equalizer: eqBands });
-      } else if (typeof player?.setEqualizer === 'function') {
-        await player.setEqualizer(eqBands);
-      } else if (typeof player?.setFilters === 'function') {
-        await player.setFilters({ equalizer: eqBands });
+      // Intentar aplicar los filtros de EQ
+      try {
+        if (player?.shoukaku?.setFilters) {
+          await player.shoukaku.setFilters({ equalizer: eqBands });
+        } else if (typeof player?.setEqualizer === 'function') {
+          await player.setEqualizer(eqBands);
+        } else if (typeof player?.setFilters === 'function') {
+          await player.setFilters({ equalizer: eqBands });
+        }
+      } catch (eqErr) {
+        console.warn('[EQ] No se pudo aplicar filtros:', eqErr.message);
+        // No es crítico, continuar de todas formas
       }
     } catch (eqError) {
-      console.error('[EQ] Error aplicando filtros:', eqError);
+      console.error('[EQ] Error grave aplicando filtros:', eqError);
       // Continuar de todas formas, el EQ es secundario
     }
 
