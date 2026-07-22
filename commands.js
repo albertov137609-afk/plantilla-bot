@@ -97,7 +97,25 @@ const play = {
     }
 
     try {
-      const searchEngine = resolveSearchEngine(focusedValue, client.defaultSearchEngine || 'soundcloud');
+      // Si es URL de Spotify, no buscar
+      if (focusedValue.includes('spotify.com')) {
+        return interaction.respond([
+          {
+            name: 'URL de Spotify (enlace directo)',
+            value: focusedValue.slice(0, 100),
+          }
+        ]);
+      }
+
+      let searchEngine = 'soundcloud';
+      if (focusedValue.includes('youtu')) {
+        searchEngine = 'youtube';
+      } else if (focusedValue.includes('soundcloud.com')) {
+        searchEngine = 'soundcloud';
+      } else {
+        searchEngine = client.defaultSearchEngine || 'soundcloud';
+      }
+
       const result = await client.kazagumo.search(focusedValue, {
         requester: interaction.user,
         engine: searchEngine,
@@ -128,12 +146,31 @@ const play = {
     try {
       const player = await getOrCreatePlayer(interaction, client);
 
-      // Determinar el engine correcto según el tipo de query
-      const searchEngine = resolveSearchEngine(query, client.defaultSearchEngine || 'soundcloud');
+      // Procesar query: si es URL de Spotify, pasarla directamente; si es texto, buscar
+      let searchQuery = query;
+      let searchEngine = null;
 
-      const result = await client.kazagumo.search(query, {
+      if (query.includes('spotify.com')) {
+        // URL directa de Spotify - pasarla como está
+        searchQuery = query;
+        searchEngine = undefined; // Kazagumo detectará automáticamente que es Spotify
+      } else if (query.includes('youtu')) {
+        // URL o búsqueda de YouTube
+        searchQuery = query;
+        searchEngine = 'youtube';
+      } else if (query.includes('soundcloud.com')) {
+        // URL de SoundCloud
+        searchQuery = query;
+        searchEngine = 'soundcloud';
+      } else {
+        // Búsqueda por texto - usar el engine por defecto
+        searchQuery = query;
+        searchEngine = client.defaultSearchEngine || 'soundcloud';
+      }
+
+      const result = await client.kazagumo.search(searchQuery, {
         requester: interaction.user,
-        engine: searchEngine,
+        ...(searchEngine && { engine: searchEngine }),
       });
 
       if (!result || !result.tracks.length) {
@@ -161,7 +198,6 @@ const play = {
 
       if (!player.playing && !player.paused) player.play();
 
-      // Si ya está reproduciendo, mostrar "agregado a la cola"
       if (player.queue.size > 1 || player.playing) {
         const embed = buildMinimalEmbed({
           color: COLOR.BLUE,
@@ -416,15 +452,17 @@ const eq = {
     }
 
     const eqBands = [
-      { band: 0, gain: Math.max(-0.5, Math.min(0.5, nextSettings.bass / 10)) },
-      { band: 1, gain: Math.max(-0.25, Math.min(0.25, nextSettings.bass / 20)) },
-      { band: 2, gain: Math.max(-0.25, Math.min(0.25, nextSettings.treble / 20)) },
-      { band: 3, gain: Math.max(-0.5, Math.min(0.5, nextSettings.treble / 10)) },
+      { band: 0, gain: Math.max(-10, Math.min(10, nextSettings.bass * 1.2)) },
+      { band: 1, gain: Math.max(-10, Math.min(10, nextSettings.bass * 0.8)) },
+      { band: 2, gain: Math.max(-10, Math.min(10, nextSettings.treble * 0.8)) },
+      { band: 3, gain: Math.max(-10, Math.min(10, nextSettings.treble * 1.2)) },
     ];
 
-    if (typeof player.setEqualizer === 'function') {
+    if (player?.shoukaku?.setFilters) {
+      await player.shoukaku.setFilters({ equalizer: eqBands });
+    } else if (typeof player?.setEqualizer === 'function') {
       await player.setEqualizer(eqBands);
-    } else if (typeof player.setFilters === 'function') {
+    } else if (typeof player?.setFilters === 'function') {
       await player.setFilters({ equalizer: eqBands });
     }
 
