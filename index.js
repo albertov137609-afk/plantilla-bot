@@ -157,17 +157,30 @@ for (const command of commands) {
 }
 
 // ─── Ready ────────────────────────────────────────────────────────────────────
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   console.log(`Bot listo como ${client.user.tag}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+  const commandBody = commands.map(c => c.data.toJSON());
+
   try {
     await rest.put(Routes.applicationCommands(client.user.id), {
-      body: commands.map(c => c.data.toJSON()),
+      body: commandBody,
     });
-    console.log('Slash commands registrados.');
+    console.log('Slash commands globales registrados.');
   } catch (error) {
-    console.error('Error registrando comandos:', error);
+    console.error('Error registrando comandos globales:', error);
+  }
+
+  if (process.env.GUILD_ID) {
+    try {
+      await rest.put(Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID), {
+        body: commandBody,
+      });
+      console.log(`Slash commands registrados para el servidor ${process.env.GUILD_ID}.`);
+    } catch (error) {
+      console.error('Error registrando comandos de servidor:', error);
+    }
   }
 });
 
