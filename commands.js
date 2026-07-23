@@ -154,9 +154,11 @@ const play = {
     if (joinError) return interaction.editReply({ embeds: [errorEmbed(joinError)] });
 
     const query = interaction.options.getString('query', true);
+    console.log('[PLAY] Query:', query.slice(0, 50));
 
     try {
       const player = await getOrCreatePlayer(interaction, client);
+      console.log('[PLAY] Player ready');
 
       let searchQuery = query;
       let searchEngine = null;
@@ -165,17 +167,11 @@ const play = {
         // URL de Spotify - pasar directamente
         searchQuery = query;
         searchEngine = 'spotify';
-      } else if (query.includes('youtu') || query.includes('youtube.com')) {
-        // URL de YouTube - usar ytsearch: para forzar resolución correcta
-        const videoIdMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        if (videoIdMatch?.[1]) {
-          // Es una URL, usar ytsearch: para forzar que Lavalink la resuelva correctamente
-          searchQuery = `ytsearch:${videoIdMatch[1]}`;
-          searchEngine = 'youtube';
-        } else {
-          searchQuery = query;
-          searchEngine = 'youtube';
-        }
+      } else if (query.includes('youtu')) {
+        // URL de YouTube - Kazagumo puede manejar URLs directamente
+        // No extraer ID, pasar la URL completa
+        searchQuery = query;
+        searchEngine = 'youtube';
       } else if (query.includes('soundcloud.com')) {
         searchQuery = query;
         searchEngine = 'soundcloud';
@@ -190,24 +186,11 @@ const play = {
         ...(searchEngine && { engine: searchEngine }),
       });
 
-      if (!result || !result.tracks.length) {
-        return interaction.editReply({ embeds: [errorEmbed(`Sin resultados para: **${query}**\n\n📢 **Nota:** Asegúrate de que el álbum o playlist no es privado y que tienes credenciales de Spotify configuradas.`)] });
-      }
+      console.log('[SEARCH]', { query: searchQuery, engine: searchEngine, found: result?.tracks?.length || 0 });
 
-      console.log('[SEARCH RESULT]', {
-        query: searchQuery,
-        engine: searchEngine,
-        type: result.type,
-        tracksCount: result.tracks.length,
-        firstTrack: {
-          title: result.tracks[0]?.title,
-          uri: result.tracks[0]?.uri,
-          author: result.tracks[0]?.author,
-          isStream: result.tracks[0]?.isStream,
-          sourceName: result.tracks[0]?.sourceName,
-          raw: result.tracks[0],
-        }
-      });
+      if (!result || !result.tracks.length) {
+        return interaction.editReply({ embeds: [errorEmbed(`Sin resultados para: **${query}**`)] });
+      }
 
       if (result.type === 'PLAYLIST') {
         for (const track of result.tracks) player.queue.add(track);
@@ -226,19 +209,11 @@ const play = {
 
       // Canción individual
       const track = result.tracks[0];
-      
-      console.log('[QUEUE ADD]', {
-        title: track.title,
-        uri: track.uri,
-        author: track.author,
-        length: track.length,
-        sourceName: track.sourceName,
-      });
+      console.log('[PLAY] Track:', track.title);
       
       player.queue.add(track);
 
       if (!player.playing && !player.paused) {
-        console.log('[PLAYER PLAY] Iniciando reproducción...');
         player.play();
       }
 
