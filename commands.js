@@ -168,10 +168,16 @@ const play = {
         searchQuery = query;
         searchEngine = 'spotify';
       } else if (query.includes('youtu')) {
-        // URL de YouTube - Kazagumo puede manejar URLs directamente
-        // No extraer ID, pasar la URL completa
-        searchQuery = query;
-        searchEngine = 'youtube';
+        // URL de YouTube - extraer ID y buscar por ese
+        const videoIdMatch = query.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (videoIdMatch?.[1]) {
+          searchQuery = videoIdMatch[1];
+          searchEngine = 'youtube';
+        } else {
+          // Si no es URL, buscar directamente
+          searchQuery = query;
+          searchEngine = 'youtube';
+        }
       } else if (query.includes('soundcloud.com')) {
         searchQuery = query;
         searchEngine = 'soundcloud';
